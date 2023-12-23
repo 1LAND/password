@@ -3,6 +3,27 @@ import flet as ft
 import pyautogui as pg
 import pyperclip as pc
 
+class Frame(ft.UserControl):
+    def __init__(self,page:ft.Page,obj:list=None,label_text="",label_icon=ft.icons.CIRCLE_OUTLINED):
+        super().__init__()
+        self.page = page 
+        self.obj = obj
+        self.label_text = label_text
+        self.label_icon = label_icon
+    def build(self):
+        return ft.Container(
+            content=ft.Column(
+                [
+                    ft.Row([ft.Icon(name=self.label_icon),ft.Text(self.label_text,size=20)]),
+                    *self.obj
+                ],
+                ),
+            bgcolor='grey900',
+            width=self.page.width-20,
+            padding=20,
+            border_radius=20
+        )
+
 class PasswordSetting(ft.UserControl):
     def __init__(self,page):
         super().__init__()
@@ -29,24 +50,18 @@ class PasswordSetting(ft.UserControl):
         await self.page.update_async()
 
     def build(self):
-        return ft.Container(
-            content=ft.Column(
-                [
-                    ft.Row([ft.Icon(name=ft.icons.SETTINGS),ft.Text('Настройки пароля',size=20)]),
-                    ft.Column(
-                        [self.c1,self.c2,self.c3,self.c4],
-                        horizontal_alignment=ft.CrossAxisAlignment.CENTER,
-                        alignment=ft.MainAxisAlignment.START,
-                    ),
-                    ft.Divider(),
-                    ft.Row([self.input_password_range])
-                ]
+        return Frame(self.page,
+        [
+            ft.Column(
+                [self.c1,self.c2,self.c3,self.c4],
+                horizontal_alignment=ft.CrossAxisAlignment.CENTER,
+                alignment=ft.MainAxisAlignment.START,
             ),
-            bgcolor='grey900',
-            width=self.page.width-20,
-            padding=20,
-            border_radius=20
-        )
+            ft.Divider(),
+            ft.Row([self.input_password_range])
+        ],
+        label_icon=ft.icons.SETTINGS,
+        label_text='Настройки пароля')
 
 class PositonSetting(ft.UserControl):
     def __init__(self,page):
@@ -90,22 +105,30 @@ class PositonSetting(ft.UserControl):
         return self.pos1.value,self.pos2.value
 
     def build(self):
-        return ft.Container(
-            content=ft.Column(
-                [
-                    ft.Row([ft.Icon(name=ft.icons.CONTROL_POINT),ft.Text('Настройки точек',size=20)]),
+        return Frame(self.page,
+                obj=[
                     ft.Text("   *Нажмите: CTRL + P - что бы выбрать точки",size=15,font_family="RobotoSlab"),
                     ft.Divider(),
                     ft.TextField(ref=self.pos1,label="Текстовое поле для пароля",),
                     ft.TextField(ref=self.pos2,label="Кнопка для провеки",),
-                    ]
-            ),
-            bgcolor='grey900',
-            width=self.page.width-20,
-            padding=20,
-            border_radius=20
-        )
+                ],
+                label_icon=ft.icons.CONTROL_POINT,
+                label_text='Настройки точек'
+            )
 
+class SearchPassword(ft.UserControl):
+    def __init__(self,page:ft.Page,position_setting:PasswordSetting,password_setting:PasswordSetting):
+        super().__init__()
+        self.page = page
+        
+        self.position_setting = position_setting
+        self.password_setting = password_setting
+
+        self.btn_main = ft.FilledTonalButton('Поиск',on_click=self.search_password)
+    def search_password(self):
+        ...
+    def build(self):
+        return Frame(self.page,obj=[self.btn_main],label_text='Поиск пароля',label_icon=ft.icons.SEARCH)
 async def main(page:ft.Page):
    
     page.window_height = 800
@@ -116,7 +139,7 @@ async def main(page:ft.Page):
     page.scroll = True
     pasword_s = PasswordSetting(page)
     position_s = PositonSetting(page)
-    main_btn =  ft.FilledTonalButton(text="Filled tonal button")
+    main_btn =  Frame(page,obj=[ft.Text('qwe')],label_text='Поиск пароля',label_icon=ft.icons.SEARCH)
     await page.add_async(main_btn)
     await page.add_async(pasword_s,position_s)
 
