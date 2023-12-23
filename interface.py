@@ -29,7 +29,7 @@ class PasswordSetting(ft.UserControl):
         super().__init__()
         self.page:ft.Page = page
 
-        self.c1 = ft.Checkbox(label="Цифры",value=True,on_change=self.change_checkbox)
+        self.c1 = ft.Checkbox(label="Цифры",value=True,on_change=self.change_checkbox,disabled=True)
         self.c2 = ft.Checkbox(label="Заглавные буквы",on_change=self.change_checkbox)
         self.c3 = ft.Checkbox(label="Строчные буквы",on_change=self.change_checkbox)
         self.c4 = ft.Checkbox(label="Спец. символы ( # @ {] & ^ )",on_change=self.change_checkbox)
@@ -44,9 +44,11 @@ class PasswordSetting(ft.UserControl):
             for c in (self.c1,self.c2, self.c3, self.c4):
                 if c.value == True:
                     c.disabled = True
+                    await c.update_async()
         else:
             for c in (self.c1,self.c2,self.c3,self.c4):
                 c.disabled = False
+                await c.update_async()
         await self.page.update_async()
 
     def build(self):
@@ -107,7 +109,7 @@ class PositonSetting(ft.UserControl):
     def build(self):
         return Frame(self.page,
                 obj=[
-                    ft.Text("   *Нажмите: CTRL + P - что бы выбрать точки",size=15,font_family="RobotoSlab"),
+                    ft.Text("   *Нажмите: CTRL + P - чтобы выбрать точки",size=15,font_family="RobotoSlab"),
                     ft.Divider(),
                     ft.TextField(ref=self.pos1,label="Текстовое поле для пароля",),
                     ft.TextField(ref=self.pos2,label="Кнопка для провеки",),
@@ -117,21 +119,80 @@ class PositonSetting(ft.UserControl):
             )
 
 class SearchPassword(ft.UserControl):
-    def __init__(self,page:ft.Page,position_setting:PasswordSetting,password_setting:PasswordSetting):
+    def __init__(self,page:ft.Page,position_setting:PositonSetting,password_setting:PasswordSetting):
         super().__init__()
         self.page = page
         
+        self.status_search = False
+
         self.position_setting = position_setting
         self.password_setting = password_setting
 
-        self.btn_main = ft.FilledTonalButton('Поиск',on_click=self.search_password)
-    def search_password(self):
-        ...
+        self.btn_main = ft.FloatingActionButton(
+            content=ft.Row(
+                [ft.Text("Поиск")], alignment="center", spacing=5
+            ),
+            width=500,
+            shape=ft.RoundedRectangleBorder(radius=5),
+            on_click=self.search_password
+        )
+        self.text_above_pb = ft.Text('Поиск...')
+        self.pb = ft.ProgressBar(width=500)
+        self.col_pb = ft.Column([self.pb])
+    async def search_password(self,e):
+        self.password_setting.input_password_range.error_text = None
+        self.position_setting.pos1.current.error_text = None
+        self.position_setting.pos2.current.error_text = None
+        if self.password_setting.input_password_range.value.strip() == '':
+            self.password_setting.input_password_range.error_text = 'Обязательно для заполнения'
+            await self.password_setting.input_password_range.update_async()
+        elif self.position_setting.pos1.current.value.strip() == '':
+            self.position_setting.pos1.current.error_text = 'Обязательно для заполнения'
+            await self.position_setting.pos1.current.update_async()
+        elif self.position_setting.pos2.current.value.strip() == '':
+            self.position_setting.pos2.current.error_text = 'Обязательно для заполнения'
+            await self.position_setting.pos2.current.update_async()
+        else:
+            self.status_search = False if self.status_search else True
+            if self.status_search:
+                self.pb.value = 0
+                self.col_pb.controls.insert(0,self.text_above_pb)
+                await self.col_pb.update_async()
+                await self.pb.update_async()
+            else:
+                self.pb.value = None
+                self.col_pb.controls.remove(self.text_above_pb)
+                await self.col_pb.update_async()
+                await self.pb.update_async()
+
+            self.position_setting.pos1.current.disabled = False if self.position_setting.pos1.current.disabled else True
+            self.position_setting.pos2.current.disabled = False if self.position_setting.pos2.current.disabled else True
+
+            self.password_setting.c1.disabled = False if self.password_setting.c1.disabled else True 
+            self.password_setting.c2.disabled = False if self.password_setting.c2.disabled else True 
+            self.password_setting.c3.disabled = False if self.password_setting.c3.disabled else True 
+            self.password_setting.c4.disabled = False if self.password_setting.c4.disabled else True 
+            await self.password_setting.c1.update_async() 
+            await self.password_setting.c2.update_async()
+            await self.password_setting.c3.update_async()
+            await self.password_setting.c4.update_async()
+            self.password_setting.input_password_range.disabled = False if self.password_setting.input_password_range.disabled else True
+        
+        await self.position_setting.pos1.current.update_async()
+        await self.position_setting.pos2.current.update_async()
+        await self.password_setting.input_password_range.update_async()
     def build(self):
-        return Frame(self.page,obj=[self.btn_main],label_text='Поиск пароля',label_icon=ft.icons.SEARCH)
+        return Frame(self.page,
+            obj=[
+                ft.Column(
+                    [self.btn_main,self.col_pb]
+                    ),
+            ],
+            label_text='Поиск пароля',
+            label_icon=ft.icons.SEARCH)
 async def main(page:ft.Page):
    
-    page.window_height = 800
+    page.window_height = 850
     page.window_width = 500
     page.window_resizable = False
     page.title = 'LAND пароли'
@@ -139,7 +200,7 @@ async def main(page:ft.Page):
     page.scroll = True
     pasword_s = PasswordSetting(page)
     position_s = PositonSetting(page)
-    main_btn =  Frame(page,obj=[ft.Text('qwe')],label_text='Поиск пароля',label_icon=ft.icons.SEARCH)
+    main_btn =  SearchPassword(page,position_s,pasword_s)
     await page.add_async(main_btn)
     await page.add_async(pasword_s,position_s)
 
